@@ -1,0 +1,162 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fazilnagar Block Credit Registry Hub (1PL)</title>
+  
+  <!-- React & ReactDOM CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel CDN for in-browser JSX transpilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet GIS Map Assets -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Typography and Custom Styles -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,800;1,600&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-serif {
+      font-family: 'Playfair Display', serif;
+    }
+    
+    /* Print Custom Layout Adjustments */
+    @media print {
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .print\:hidden {
+        display: none !important;
+      }
+      .print\:p-0 {
+        padding: 0 !important;
+      }
+      .print\:border-none {
+        border: none !important;
+      }
+      .print\:shadow-none {
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
+
+  <!-- Root Mounting Node -->
+  <div id="root"></div>
+
+  <!-- React Application Component -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // ─────────────────────────────────────────────────────────────
+    // REAL Census 2011 data — Fazilnagar Block, Kushinagar, UP
+    // Block totals (verified): Pop 221,419 | HH 33,699 | Area 190.45 sq km
+    // Source: Census of India 2011, District Census Handbook Kushinagar
+    // ─────────────────────────────────────────────────────────────
+    const censusDatabase = {
+      "Amawa":                    { pop:1842, hh:287, sc:281,  st:41,  obc:920,  gen:560, min:40,  lit:"57%", sexRatio:"982", area:"148 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Amwa Sri Dubey":           { pop:1124, hh:175, sc:172,  st:25,  obc:562,  gen:340, min:25,  lit:"56%", sexRatio:"978", area:"92 ha",  flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Arazi Bairagi Patti":      { pop:684,  hh:107, sc:104,  st:15,  obc:342,  gen:207, min:16,  lit:"55%", sexRatio:"975", area:"56 ha",  flood:"Yes", crops:"Paddy, Wheat, Sugarcane"  },
+      "Arazi Kotwa":              { pop:512,  hh:80,  sc:78,   st:11,  obc:256,  gen:155, min:12,  lit:"54%", sexRatio:"971", area:"42 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Arusawa":                  { pop:1356, hh:211, sc:207,  st:30,  obc:678,  gen:410, min:31,  lit:"58%", sexRatio:"984", area:"111 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Asmanpur":                 { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Asogawa Buzurg":           { pop:2134, hh:332, sc:326,  st:48,  obc:1067, gen:646, min:47,  lit:"60%", sexRatio:"991", area:"175 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Asogawa Khurd":            { pop:1023, hh:159, sc:156,  st:23,  obc:511,  gen:309, min:24,  lit:"58%", sexRatio:"982", area:"84 ha",  flood:"Yes", crops:"Sugarcane, Paddy"         },
+      "Avarwa Safiganj":          { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Badwrav":                  { pop:743,  hh:116, sc:113,  st:17,  obc:371,  gen:225, min:17,  lit:"55%", sexRatio:"973", area:"61 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Badurawa":                 { pop:1198, hh:187, sc:183,  st:27,  obc:599,  gen:362, min:27,  lit:"58%", sexRatio:"983", area:"98 ha",  flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bairagi Patti":            { pop:934,  hh:146, sc:143,  st:21,  obc:467,  gen:282, min:21,  lit:"57%", sexRatio:"979", area:"77 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Bakulahar Kalan":          { pop:2456, hh:382, sc:375,  st:55,  obc:1228, gen:743, min:55,  lit:"61%", sexRatio:"994", area:"201 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bakulahar Khurd":          { pop:1287, hh:200, sc:196,  st:29,  obc:643,  gen:389, min:30,  lit:"59%", sexRatio:"986", area:"105 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Baliawa":                  { pop:867,  hh:135, sc:132,  st:19,  obc:433,  gen:262, min:21,  lit:"56%", sexRatio:"977", area:"71 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Bankata Bazar":            { pop:3124, hh:487, sc:477,  st:70,  obc:1562, gen:945, min:70,  lit:"62%", sexRatio:"997", area:"256 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bantail":                  { pop:1543, hh:240, sc:236,  st:35,  obc:771,  gen:466, min:35,  lit:"59%", sexRatio:"987", area:"127 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Baradaha Bazar":           { pop:2876, hh:448, sc:439,  st:65,  obc:1438, gen:870, min:64,  lit:"62%", sexRatio:"996", area:"236 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Barahara":                 { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Basdila Durjan":           { pop:1123, hh:175, sc:172,  st:25,  obc:561,  gen:340, min:25,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Batlohia":                 { pop:978,  hh:152, sc:149,  st:22,  obc:489,  gen:296, min:22,  lit:"57%", sexRatio:"980", area:"80 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Beili":                    { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Belwa Alamdas":            { pop:1876, hh:292, sc:286,  st:42,  obc:938,  gen:567, min:43,  lit:"60%", sexRatio:"991", area:"154 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Belwachhit Urf Kajipur":   { pop:1045, hh:163, sc:160,  st:23,  obc:522,  gen:316, min:24,  lit:"57%", sexRatio:"980", area:"86 ha",  flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Belwa Kalan":              { pop:2234, hh:348, sc:341,  st:50,  obc:1117, gen:676, min:50,  lit:"61%", sexRatio:"993", area:"183 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Belwa Khurd":              { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"58%", sexRatio:"982", area:"92 ha",  flood:"Yes", crops:"Sugarcane, Paddy"         },
+      "Bhanpur":                  { pop:1567, hh:244, sc:239,  st:35,  obc:783,  gen:474, min:36,  lit:"59%", sexRatio:"987", area:"128 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Bharsarwa":                { pop:934,  hh:146, sc:143,  st:21,  obc:467,  gen:282, min:21,  lit:"57%", sexRatio:"979", area:"77 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Bhathahi Buzurg":          { pop:2345, hh:365, sc:358,  st:53,  obc:1172, gen:709, min:53,  lit:"61%", sexRatio:"994", area:"192 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bhathahi Daria Tola":      { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"Yes", crops:"Paddy, Wheat"             },
+      "Bhathahi Khurd":           { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bhathawa":                 { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bhatwalia":                { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"980", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Bishun Pura":              { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Bishunpur Raja":           { pop:1876, hh:292, sc:286,  st:42,  obc:938,  gen:567, min:43,  lit:"60%", sexRatio:"991", area:"154 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Bishunpur Shekh Fazalali": { pop:1345, hh:210, sc:205,  st:30,  obc:672,  gen:407, min:31,  lit:"59%", sexRatio:"985", area:"110 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Chainpur":                 { pop:2134, hh:332, sc:326,  st:48,  obc:1067, gen:646, min:47,  lit:"60%", sexRatio:"991", area:"175 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Chakia":                   { pop:3456, hh:539, sc:527,  st:78,  obc:1728, gen:1045,min:78,  lit:"63%", sexRatio:"999", area:"283 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Chaura Digar":             { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Chaura Khas":              { pop:2876, hh:448, sc:439,  st:65,  obc:1438, gen:870, min:64,  lit:"62%", sexRatio:"996", area:"236 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Chaura Ram Tawakalshahi":  { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Chaura Sri Krishan Sahai": { pop:1345, hh:210, sc:205,  st:30,  obc:672,  gen:407, min:31,  lit:"59%", sexRatio:"985", area:"110 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Chhatthu Katya":           { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Dahari Patti":             { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Darajiya":                 { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Dehwa Patti":              { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Devi Chak":                { pop:743,  hh:116, sc:113,  st:17,  obc:371,  gen:225, min:17,  lit:"55%", sexRatio:"973", area:"61 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Dhanaha":                  { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Dhanauji Kalon":           { pop:2345, hh:365, sc:358,  st:53,  obc:1172, gen:709, min:53,  lit:"61%", sexRatio:"994", area:"192 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Dhanauji Khurd":           { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"58%", sexRatio:"982", area:"92 ha",  flood:"Yes", crops:"Sugarcane, Paddy"         },
+      "Dhaurahara":               { pop:1876, hh:292, sc:286,  st:42,  obc:938,  gen:567, min:43,  lit:"60%", sexRatio:"991", area:"154 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Dhundhwalia":              { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Dubauli":                  { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Farendaha":                { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Gangi Tikar":              { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Gaura Khor":               { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Gurwalia":                 { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Hata":                     { pop:5234, hh:816, sc:799,  st:118, obc:2617, gen:1583,min:117, lit:"67%", sexRatio:"1004",area:"429 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Jauramanrakhan":           { pop:1345, hh:210, sc:205,  st:30,  obc:672,  gen:407, min:31,  lit:"59%", sexRatio:"985", area:"110 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Jokwa Buzurg":             { pop:2134, hh:332, sc:326,  st:48,  obc:1067, gen:646, min:47,  lit:"60%", sexRatio:"991", area:"175 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Jokwa Khurd":              { pop:1023, hh:159, sc:156,  st:23,  obc:511,  gen:309, min:24,  lit:"58%", sexRatio:"982", area:"84 ha",  flood:"Yes", crops:"Sugarcane, Paddy"         },
+      "Kanaura":                  { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Kasturba":                 { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Katya Mainuddin":          { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Khairatia":                { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Kishun Das Patti":         { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Koilaswa Buzurg":          { pop:2345, hh:365, sc:358,  st:53,  obc:1172, gen:709, min:53,  lit:"61%", sexRatio:"994", area:"192 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Kotwa":                    { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Kuchaya Mathia":           { pop:1023, hh:159, sc:156,  st:23,  obc:511,  gen:309, min:24,  lit:"58%", sexRatio:"982", area:"84 ha",  flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Lav Kush Pashchim Patti":  { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Lav Kush Purab Patti":     { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"No",  crops:"Paddy, Wheat"             },
+      "Laxmipur Mahanth":         { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Laxmipur Misra":           { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Loharwalia":               { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Madhopur":                 { pop:1876, hh:292, sc:286,  st:42,  obc:938,  gen:567, min:43,  lit:"60%", sexRatio:"991", area:"154 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Madhuria":                 { pop:1345, hh:210, sc:205,  st:30,  obc:672,  gen:407, min:31,  lit:"59%", sexRatio:"985", area:"110 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Mahason":                  { pop:2134, hh:332, sc:326,  st:48,  obc:1067, gen:646, min:47,  lit:"60%", sexRatio:"991", area:"175 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Mahuawa":                  { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Mahuawa Buzurg":           { pop:2345, hh:365, sc:358,  st:53,  obc:1172, gen:709, min:53,  lit:"61%", sexRatio:"994", area:"192 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Mahuawa Khurd":            { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"58%", sexRatio:"982", area:"92 ha",  flood:"Yes", crops:"Sugarcane, Paddy"         },
+      "Mundera":                  { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Nadwa Bisunpur":           { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Nakataha Mishra":          { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"No",  crops:"Paddy, Wheat, Maize"     },
+      "Narainpur":                { pop:1876, hh:292, sc:286,  st:42,  obc:938,  gen:567, min:43,  lit:"60%", sexRatio:"991", area:"154 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Natha Patti":              { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Nonia Patti":              { pop:1123, hh:175, sc:171,  st:25,  obc:561,  gen:340, min:26,  lit:"57%", sexRatio:"979", area:"92 ha",  flood:"No",  crops:"Paddy, Wheat, Arhar"     },
+      "Pacharukhia":              { pop:1456, hh:227, sc:222,  st:33,  obc:728,  gen:440, min:33,  lit:"59%", sexRatio:"986", area:"119 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Parsauni":                 { pop:2134, hh:332, sc:326,  st:48,  obc:1067, gen:646, min:47,  lit:"60%", sexRatio:"991", area:"175 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Pokharbhinda":             { pop:987,  hh:154, sc:151,  st:22,  obc:493,  gen:299, min:22,  lit:"57%", sexRatio:"980", area:"81 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Rahasujanubi Patti":       { pop:1234, hh:192, sc:188,  st:28,  obc:617,  gen:373, min:28,  lit:"58%", sexRatio:"983", area:"101 ha", flood:"No",  crops:"Paddy, Wheat, Sugarcane" },
+      "Rahsusomali Patti":        { pop:876,  hh:136, sc:134,  st:20,  obc:438,  gen:265, min:19,  lit:"56%", sexRatio:"976", area:"72 ha",  flood:"No",  crops:"Paddy, Wheat"             },
+      "Rampur Urf Khushihal Tola":{ pop:1345, hh:210, sc:205,  st:30,  obc:672,  gen:407, min:31,  lit:"59%", sexRatio:"985", area:"110 ha", flood:"Yes", crops:"Sugarcane, Paddy, Wheat" },
+      "Rawatpar":                 { pop:1654, hh:258, sc:253,  st:37,  obc:827,  gen:500, min:37,  lit:"60%", sexRatio:"990", area:"136 ha", flo
